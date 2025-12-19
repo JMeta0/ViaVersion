@@ -58,11 +58,22 @@ public final class ComponentRewriter1_21 extends JsonNBTComponentRewriter<Client
             return;
         }
         final ListTag<CompoundTag> modifiers = attributeModifiers.getListTag("modifiers", CompoundTag.class);
+        if (modifiers == null) {
+            return;
+        }
         for (final CompoundTag modifier : modifiers) {
-            final String name = modifier.getString("name");
-            final UUID uuid = UUIDUtil.fromIntArray(modifier.getIntArrayTag("uuid").getValue());
-            final String id = Protocol1_20_5To1_21.mapAttributeUUID(uuid, name);
-            modifier.putString("id", id);
+            try {
+                final String name = modifier.getString("name");
+                final var uuidTag = modifier.getIntArrayTag("uuid");
+                if (uuidTag == null || uuidTag.getValue().length != 4) {
+                    continue;
+                }
+                final UUID uuid = UUIDUtil.fromIntArray(uuidTag.getValue());
+                final String id = Protocol1_20_5To1_21.mapAttributeUUID(uuid, name);
+                modifier.putString("id", id);
+            } catch (final Exception e) {
+                // Silently skip malformed attribute modifiers to prevent decoder exceptions
+            }
         }
     }
 

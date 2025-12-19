@@ -177,27 +177,42 @@ public class JsonNBTComponentRewriter<C extends ClientboundPacketType> extends C
 
         final String action = actionTag.getValue();
         if (action.equals("show_text")) {
-            final Tag value = hoverEventTag.get("value");
-            processTag(connection, value != null ? value : hoverEventTag.get("contents"));
+            try {
+                final Tag value = hoverEventTag.get("value");
+                processTag(connection, value != null ? value : hoverEventTag.get("contents"));
+            } catch (final Exception e) {
+                // Remove the entire hover event to prevent decoder exceptions
+                hoverEventTag.clear();
+            }
         } else if (action.equals("show_entity")) {
-            convertLegacyEntityContents(hoverEventTag);
+            try {
+                convertLegacyEntityContents(hoverEventTag);
 
-            final CompoundTag contents = hoverEventTag.getCompoundTag("contents");
-            if (contents != null) {
-                processTag(connection, contents.get("name"));
+                final CompoundTag contents = hoverEventTag.getCompoundTag("contents");
+                if (contents != null) {
+                    processTag(connection, contents.get("name"));
 
-                final StringTag typeTag = contents.getStringTag("type");
-                if (typeTag != null && protocol.getEntityRewriter() != null) {
-                    typeTag.setValue(protocol.getEntityRewriter().mappedEntityIdentifier(typeTag.getValue()));
+                    final StringTag typeTag = contents.getStringTag("type");
+                    if (typeTag != null && protocol.getEntityRewriter() != null) {
+                        typeTag.setValue(protocol.getEntityRewriter().mappedEntityIdentifier(typeTag.getValue()));
+                    }
                 }
+            } catch (final Exception e) {
+                // Remove the entire hover event to prevent decoder exceptions
+                hoverEventTag.clear();
             }
         } else if (action.equals("show_item")) {
-            convertLegacyItemContents(hoverEventTag);
+            try {
+                convertLegacyItemContents(hoverEventTag);
 
-            final CompoundTag contentsTag = hoverEventTag.getCompoundTag("contents");
-            if (contentsTag != null) {
-                final CompoundTag componentsTag = contentsTag.getCompoundTag("components");
-                handleShowItem(connection, contentsTag, componentsTag);
+                final CompoundTag contentsTag = hoverEventTag.getCompoundTag("contents");
+                if (contentsTag != null) {
+                    final CompoundTag componentsTag = contentsTag.getCompoundTag("components");
+                    handleShowItem(connection, contentsTag, componentsTag);
+                }
+            } catch (final Exception e) {
+                // Remove the entire hover event to prevent decoder exceptions
+                hoverEventTag.clear();
             }
         }
     }

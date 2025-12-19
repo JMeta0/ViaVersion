@@ -200,7 +200,14 @@ public class ComponentRewriter1_20_5<C extends ClientboundPacketType> extends Js
 
     @Override
     protected void handleShowItem(final UserConnection connection, final CompoundTag itemTag, final @Nullable CompoundTag componentsTag) {
-        super.handleShowItem(connection, itemTag, componentsTag);
+        try {
+            super.handleShowItem(connection, itemTag, componentsTag);
+        } catch (final Exception e) {
+            if (!Via.getConfig().isSuppressTextComponentConversionWarnings()) {
+                protocol.getLogger().log(Level.WARNING, "Error handling show_item in parent handler: " + StringUtil.forLogging(itemTag), e);
+            }
+            // Continue processing even if parent fails
+        }
 
         final StringTag idTag = itemTag.getStringTag("id");
         if (idTag == null) {
@@ -230,7 +237,16 @@ public class ComponentRewriter1_20_5<C extends ClientboundPacketType> extends Js
             dataItem.setTag(tagTag);
         }
 
-        final Item structuredItem = protocol.getItemRewriter().handleItemToClient(connection, dataItem);
+        final Item structuredItem;
+        try {
+            structuredItem = protocol.getItemRewriter().handleItemToClient(connection, dataItem);
+        } catch (final Exception e) {
+            if (!Via.getConfig().isSuppressTextComponentConversionWarnings()) {
+                protocol.getLogger().log(Level.WARNING, "Error rewriting item in show_item: " + StringUtil.forLogging(itemTag), e);
+            }
+            return;
+        }
+
         if (structuredItem.amount() < 1) {
             // Cannot be empty
             structuredItem.setAmount(1);

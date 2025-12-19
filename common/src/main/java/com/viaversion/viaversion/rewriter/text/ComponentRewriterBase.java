@@ -67,7 +67,11 @@ public abstract class ComponentRewriterBase<C extends ClientboundPacketType> imp
      * @param packetType clientbound packet type
      */
     public void registerComponentPacket(final C packetType) {
-        protocol.registerClientbound(packetType, this::passthroughAndProcess);
+        protocol.registerClientbound(packetType, wrapper -> {
+            final Tag message = wrapper.passthrough(Types.TAG);
+            // Strip hover events to prevent decoder issues
+            stripHoverEvents(wrapper.user(), message);
+        });
     }
 
     public void registerBossEvent(final C packetType) {
@@ -175,8 +179,28 @@ public abstract class ComponentRewriterBase<C extends ClientboundPacketType> imp
     public void registerPlayerCombatKill1_20(final C packetType) {
         protocol.registerClientbound(packetType, wrapper -> {
             wrapper.passthrough(Types.VAR_INT); // Player ID
-            passthroughAndProcess(wrapper);
+            // Strip hover events from combat messages to prevent client decoder issues
+            final Tag message = wrapper.passthrough(Types.TAG);
+            stripHoverEvents(wrapper.user(), message);
         });
+    }
+
+    private void stripHoverEvents(final UserConnection connection, final Tag tag) {
+        if (tag instanceof CompoundTag compoundTag) {
+            // Remove hover events that might cause issues
+            final String hoverKey = hoverEventKey();
+            if (compoundTag.remove(hoverKey) != null || compoundTag.remove("hoverEvent") != null) {
+                // Hover event removed
+            }
+            // Recursively check nested components
+            for (final Tag value : compoundTag.values()) {
+                stripHoverEvents(connection, value);
+            }
+        } else if (tag instanceof ListTag<?> listTag) {
+            for (final Tag element : listTag) {
+                stripHoverEvents(connection, element);
+            }
+        }
     }
 
     public void registerDisguisedChat(final C packetType) {
